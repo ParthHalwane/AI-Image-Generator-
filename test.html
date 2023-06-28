@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Image Generation with Animation Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        #canvas-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            border: 1px solid black;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: none; /* Hide the canvas container initially */
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #image-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            animation: fadeInScale 1s ease-in-out forwards;
+        }
+
+        .preloader {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .preloader span {
+            font-size: 20px;
+            background-color: white;
+            padding: 5px 10px;
+            margin: 10px;
+        }
+
+        @keyframes fadeInScale {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .input-container label {
+            margin-right: 10px;
+        }
+
+        .input-container input[type="text"] {
+            width: 300px;
+            padding: 8px;
+            font-size: 14px;
+        }
+
+        .input-container button {
+            cursor: pointer;
+            outline: 0;
+            margin-left: 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+            background-color: #648cff;
+            border: none;
+            color: white;
+            border-radius: 3px;
+        }
+
+        .input-container button:hover {
+            background-color: #4172fa;
+        }
+
+        .input-container button:active {
+            background-color: #527ffc;
+            transform: scale(0.98);
+        }
+
+        .main-image-container {
+            display: flex;
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            margin: auto;
+            align-items: center;
+            flex-direction: column;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.206);
+        }
+        .bg{
+            position: absolute;
+            /* height: fit-content; */
+            width: 100%;
+            z-index: -1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="main-image-container">
+        <img src="background.png" alt="" srcset="" class="bg">
+        <div id="canvas-container" style="min-height: 400px; min-width:400px;">
+            <canvas id="canvas" width="400" height="400"></canvas>
+            <div id="image-container"></div>
+        </div>
+        <div class="input-container">
+            <label for="prompt"><input type="text" id="prompt" name="prompt" placeholder="Enter a prompt" required></label>
+            <button id="generateBtn">Generate</button>
+        </div>
+        <p id="error-message" style="color: red; font-size: 12px;"></p>
+    </div>
+    <script>
+        // API endpoint for the model
+        const apiEndpoint = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2";
+
+        // Function to generate random RGB values
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        // Function to draw a pixel with random color
+        function drawPixel(x, y, color) {
+            context.fillStyle = color;
+            context.fillRect(x, y, 5, 5);
+        }
+
+        // Function to update the canvas with new colors
+function updateCanvas() {
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Clear the canvas
+    context.clearRect(0, 0, width, height);
+
+    const boxSize = 40; // Size of each box (10x10)
+    const boxCountX = width / boxSize; // Number of boxes horizontally
+    const boxCountY = height / boxSize; // Number of boxes vertically
+
+    // Iterate through each box
+    for (let x = 0; x < boxCountX; x++) {
+        for (let y = 0; y < boxCountY; y++) {
+            const color = getRandomColor();
+
+            // Iterate through each pixel within the current box
+            for (let i = 0; i < boxSize; i++) {
+                for (let j = 0; j < boxSize; j++) {
+                    const pixelX = x * boxSize + i;
+                    const pixelY = y * boxSize + j;
+                    drawPixel(pixelX, pixelY, color);
+                }
+            }
+        }
+    }
+
+    // Call the updateCanvas function again after a delay
+    setTimeout(updateCanvas, 100);
+}
+
+        // Function to display the placeholder image
+        function displayPlaceholderImage() {
+            const imageContainer = document.getElementById("image-container");
+            const placeholderImage = document.createElement("img");
+            placeholderImage.classList.add("placeholder-image");
+            placeholderImage.src = "download.png"; // Replace "path_to_sample_image.jpg" with the path to your sample image
+            imageContainer.appendChild(placeholderImage);
+            imageContainer.style.opacity = 1;
+        }
+
+        // Call the function to display the placeholder image
+        displayPlaceholderImage();
+
+        // Generate image using the model
+        function generateImage(prompt) {
+            const errorMessage = document.getElementById("error-message");
+            if (!prompt) {
+                // Show error message if prompt is empty
+                errorMessage.innerText = "Please enter a prompt";
+                return;
+            }
+            updateCanvas();
+            // Clear error message if prompt is not empty
+            errorMessage.innerText = "";
+            const headers = {
+                "Authorization": "Bearer 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",
+                "Content-Type": "application/json",
+            };
+
+            const data = {
+                "inputs": prompt,
+                "max_iterations": 100,
+                "timestep_respacing": "1.0",
+                "random_seed": 0,
+            };
+
+            // Show the preloader while the image is generating and loading
+            const imageContainer = document.getElementById("image-container");
+            imageContainer.innerHTML = '<div class="preloader"><span style="background-color:#00000000; color:white; font-weight:bold;">Generating...</span></div>';
+
+            $.ajax({
+                url: apiEndpoint,
+                headers: headers,
+                type: "POST",
+                data: JSON.stringify(data),
+                xhrFields: {
+                    responseType: 'blob' // Set the response type as blob
+                },
+                success: function (response) {
+                    const imageUrl = URL.createObjectURL(response); // Create object URL from the blob
+                    const imageElement = document.createElement("img");
+                    imageElement.src = imageUrl;
+
+                    // Clear the preloader and show the generated image
+                    imageContainer.innerHTML = "";
+                    imageContainer.appendChild(imageElement);
+                    imageContainer.style.opacity = 1;
+                    // imageContainer.style.width = 'fit-content' 
+
+                    console.log("Image generated successfully!");
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error:", error);
+                }
+            });
+        }
+
+        // Event listener for the Generate button
+        document.getElementById("generateBtn").addEventListener("click", function () {
+            const prompt = document.getElementById("prompt").value;
+            const canvasContainer = document.getElementById("canvas-container");
+            canvasContainer.style.display = "block"; // Show the canvas container
+            canvasContainer.style.width = "fit-content"; // Show the canvas container
+            canvasContainer.style.height = "fit-content"; // Show the canvas container
+
+            generateImage(prompt);
+        });
+
+        // Get the canvas element and context
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        // Start the animation
+        
+    </script>
+</body>
+
+</html>
